@@ -158,6 +158,28 @@ final public class RadarView: RippleView {
         }
     }
     
+    /// browse circles and find possible position to draw layer
+    private func calculateItemPosition(index: Int, angle: Float) -> CGPoint {
+        
+        for (i, layer) in circlesLayer.enumerated() {
+            if i == index {
+                let origin = layer.position
+                let radius = radiusOfCircle(at: i)
+                let circle = Circle(origin: origin, radius:radius)
+                let itemOrigin = Geometry.point(in: CGFloat(angle), of: circle)
+                return itemOrigin
+            }
+        }
+        
+        let origin = circlesLayer[circlesLayer.count - 1].position
+        let radius = radiusOfCircle(at: circlesLayer.count - 1)
+        let circle = Circle(origin: origin, radius:radius)
+        let capicity = (radius * CGFloat.pi) / (itemRadius + paddingBetweenItems/2)
+        let a = ((CGFloat(index) * 2 * CGFloat.pi) / CGFloat(capicity))/* + randomAngle */
+        let itemOrigin = Geometry.point(in: CGFloat(a), of: circle)
+        return itemOrigin
+    }
+    
     /// Add item layer to radar view
     ///
     /// - Parameters:
@@ -180,6 +202,34 @@ final public class RadarView: RippleView {
         }
         let origin = availablePositions[index]
         availablePositions.remove(at: index)
+        
+        let preferredSize = CGSize(width: itemRadius*2, height: itemRadius*2)
+        let customView = dataSource?.radarView(radarView: self, viewFor: item, preferredSize: preferredSize)
+        let itemView = addItem(view: customView, with: origin, and: animation)
+        let itemLayer = ItemView(view: itemView, item: item, index: index)
+        self.addSubview(itemView)
+        itemsViews.append(itemLayer)
+    }
+    
+    
+    /// Add item layer to radar view
+    ///
+    /// - Parameters:
+    ///   - item: item to add to the radar view
+    ///   - index: the index of the item layer (position)
+    ///   - at: precise position
+    ///   - animation: the animation used to show the item layer
+    private func add(item: Item, index: Int, at: CGPoint, using animation: CAAnimation? = Animation.transform()) {
+        
+        if allPossiblePositions.isEmpty {
+            findPossiblePositions()
+        }
+        if availablePositions.count == 0 {
+            print("HGRipplerRadarView Warning: you use more than the capacity of the radar view, some layers will overlaying other layers")
+            availablePositions = allPossiblePositions
+        }
+        
+        let origin = at
         
         let preferredSize = CGSize(width: itemRadius*2, height: itemRadius*2)
         let customView = dataSource?.radarView(radarView: self, viewFor: item, preferredSize: preferredSize)
@@ -268,6 +318,23 @@ extension RadarView {
             self.add(item: items[index], using: animation)
         }
     }
+    
+    /// Add item to precise location in the radar view
+    ///
+    /// - Parameters:
+    ///   - item: the item to add to the radar view
+    ///   - at: circle index
+    ///   - angle: angle
+    ///   - animation: the animation used to show  items layers
+    public func add(item: Item, at: Int, angle: Float, using animation: CAAnimation = Animation.transform()) {
+        if allPossiblePositions.isEmpty {
+            findPossiblePositions()
+        }
+        let origin = calculateItemPosition(index: at, angle: angle)
+        
+        add(item: item, index: at, at: origin, using: animation)
+    }
+    
     
     /// Add item randomly in the radar view
     ///
